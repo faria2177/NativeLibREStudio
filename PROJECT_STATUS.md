@@ -28,13 +28,14 @@ Local JVM run: **53 tests, 0 failures**
 
 ## Build status
 
-✅ CI run #1 (commit f45071c) passed: all unit tests, debug + release APK assembly, lint (report-only).
-Release [build-1](https://github.com/faria2177/NativeLibREStudio/releases/tag/build-1): debug APK 17.2 MB, release APK (R8-minified, debug-signed) 1.4 MB.
-Every push to `main` publishes a new `build-N` pre-release.
+✅ CI run for build-6 (Phase 4) passed: 53 unit tests, debug + release APKs, lint (report-only).
+Release [build-6](https://github.com/faria2177/NativeLibREStudio/releases/tag/build-6) is signed with the permanent
+release key (EC P-256, cert SHA-256 `70:C0:E4:47:…:1E:89:F2:E4`), verified from the downloaded APK.
+Every push to `main` publishes a new `build-N` release that the in-app updater offers.
 
 ## Release & updates
 
-- CI signs with the permanent release key once the four `RELEASE_*` secrets are set (until then: throw-away debug key).
+- CI signs debug and release APKs with the permanent release key from the four `RELEASE_*` secrets; the workflow validates the keystore first and fails clearly if a secret is wrong.
 - In-app updater checks `faria2177/NativeLibREStudio` latest release; first install signed with the new key requires uninstalling builds signed with the old debug key once.
 
 ## Performance (desktop JVM reference)
