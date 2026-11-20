@@ -43,11 +43,19 @@ jobs:
         run: ./gradlew --stacktrace :core:common:test :core:elf:test :core:archive:test :core:strings:test :app:testDebugUnitTest
 
       - name: Decode release keystore (optional)
+        if: env.HAS_KEYSTORE == 'true'
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-        if: env.HAS_KEYSTORE == 'true'
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.jks"
+          # Validate the secrets early with a clear message (prints only the public certificate fingerprint).
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$RELEASE_KEYSTORE_PASSWORD" -alias "$RELEASE_KEY_ALIAS" > "$RUNNER_TEMP/ks.txt" 2>&1; then
+            echo "::error title=Release keystore::Keystore could not be opened with RELEASE_KEYSTORE_PASSWORD / RELEASE_KEY_ALIAS: $(head -c 300 "$RUNNER_TEMP/ks.txt" | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "::notice title=Release keystore::OK — $(grep -i 'SHA-256' "$RUNNER_TEMP/ks.txt" | head -1)"
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Assemble debug and release APKs
@@ -55,7 +63,14 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease
+        run: |
+          set -o pipefail
+          if ! ./gradlew :app:assembleDebug :app:assembleRelease 2>&1 | tee "$RUNNER_TEMP/assemble.log"; then
+            # Surface the real cause as a (publicly readable) annotation.
+            msg=$( (grep -E '^e: |error:|What went wrong|Caused by|Exception|FAILED' -A3 "$RUNNER_TEMP/assemble.log" || tail -40 "$RUNNER_TEMP/assemble.log") | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Assemble failed::$msg"
+            exit 1
+          fi
 
       - name: Lint (report only)
         continue-on-error: true
