@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nativelib.restudio.core.common.humanBytes
 import com.nativelib.restudio.data.AnalysisRecord
+import com.nativelib.restudio.ui.DirectTarget
 import com.nativelib.restudio.ui.MainViewModel
 import com.nativelib.restudio.ui.components.Pill
 import java.text.DateFormat
@@ -84,8 +85,9 @@ fun DashboardScreen(
 
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> vm.importUris(uris) }
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { vm.importFolder(it) } }
-    val pickElf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importUris(listOf(it), openElfDirectly = true) } }
-    val pickElfSymbols = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importUris(listOf(it), openElfDirectly = true, elfTab = ElfTabs.SYMBOLS) } }
+    val pickElf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importUris(listOf(it), DirectTarget.ELF) } }
+    val pickElfSymbols = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importUris(listOf(it), DirectTarget.SYMBOLS) } }
+    val pickStrings = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.importUris(listOf(it), DirectTarget.STRINGS) } }
     val any = arrayOf("*/*")
 
     val tools = listOf(
@@ -94,7 +96,7 @@ fun DashboardScreen(
         Tool("Extract Native Libraries", "Detect ABIs, extract every .so, verify CRC-32 + SHA-256", Icons.Filled.Unarchive) { pickFiles.launch(any) },
         Tool("ELF Analyzer", "Headers, segments, sections, dynamic, relocations, notes", Icons.Filled.Memory) { pickElf.launch(any) },
         Tool("Symbol Explorer", "Exported / imported / dynamic / static symbols", Icons.Filled.DataObject) { pickElfSymbols.launch(any) },
-        Tool("Strings Explorer", "ASCII / UTF-8 / UTF-16 strings", Icons.Filled.TextFields, plannedPhase = 4),
+        Tool("Strings Explorer", "ASCII / UTF-8 / UTF-16 strings, regex search, URL/path/class tagging", Icons.Filled.TextFields) { pickStrings.launch(any) },
         Tool("Disassembler", "ARM32 / ARM64 / x86 / x86_64 via Capstone", Icons.Filled.Code, plannedPhase = 5),
         Tool("Decompiler", "Pseudocode (clearly labelled as reconstructed)", Icons.AutoMirrored.Filled.ViewList, plannedPhase = 6),
         Tool("Dependency Analyzer", "Dependency trees; NEEDED/RPATH already in ELF Analyzer", Icons.Filled.AccountTree, plannedPhase = 7),

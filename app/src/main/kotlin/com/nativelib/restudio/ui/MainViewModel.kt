@@ -28,8 +28,13 @@ sealed interface JobState {
 sealed interface NavEvent {
     data class OpenAnalysis(val id: Long) : NavEvent
     data class OpenElf(val id: Long, val libIndex: Int, val tab: Int = 0) : NavEvent
+    /** libIndex -1 = the imported file itself (DEX, raw binaries). */
+    data class OpenStrings(val id: Long, val libIndex: Int) : NavEvent
     data object OpenHistory : NavEvent
 }
+
+/** Where a single imported file should open once analysed (null = extraction report). */
+enum class DirectTarget { ELF, SYMBOLS, STRINGS }
 
 /** Activity-scoped state: import queue, progress, cancellation and history. */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -63,10 +68,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.observeHistory().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
-     * Imports and analyses each URI in order. A single raw ELF goes straight to the ELF Analyzer when
-     * [openElfDirectly] is set; one archive opens its extraction report; several inputs open History.
+     * Imports and analyses each URI in order. With a [target], a single raw ELF (or, for STRINGS, any
+     * non-archive file) opens that tool directly; archives open their extraction report; several inputs open History.
      */
-    fun importUris(uris: List<Uri>, openElfDirectly: Boolean = false, elfTab: Int = 0) {
+    fun importUris(uris: List<Uri>, target: DirectTarget? = null) {
         if (uris.isEmpty()) return
         if (running?.isActive == true) { _messages.tryEmit("An analysis is already running"); return }
         running = viewModelScope.launch {
@@ -89,7 +94,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 when {
                     done == null -> Unit
                     uris.size > 1 -> { _messages.tryEmit("Analysed ${uris.size - failures} of ${uris.size} files"); _nav.tryEmit(NavEvent.OpenHistory) }
-                    openElfDirectly && done.report.containerType == ContainerType.ELF -> _nav.tryEmit(NavEvent.OpenElf(done.record.id, 0, elfTab))
+                    target == DirectTarget.STRINGS && !done.report.containerType.isArchive ->
+                        _nav.tryEmit(NavEvent.OpenStrings(done.record.id, if (done.report.containerType == ContainerType.ELF) 0 else -1))
+                    target != null && target != DirectTarget.STRINGS && done.report.containerType == ContainerType.ELF ->
+                        _nav.tryEmit(NavEvent.OpenElf(done.record.id, 0, if (target == DirectTarget.SYMBOLS) com.nativelib.restudio.ui.screens.ElfTabs.SYMBOLS else 0))
                     else -> _nav.tryEmit(NavEvent.OpenAnalysis(done.record.id))
                 }
             } catch (e: CancellationException) {

@@ -213,3 +213,21 @@ class ElfParserTest {
         try { ElfParser().parse(ByteArraySource(b)); fail("expected ElfFormatException") } catch (_: ElfFormatException) { }
     }
 }
+
+class SymbolReportTest {
+    private fun parse(name: String) = ElfParser().parse(com.nativelib.restudio.core.common.ByteArraySource(java.util.Base64.getMimeDecoder().decode(
+        requireNotNull(javaClass.getResourceAsStream("/elf/$name.b64")).use { it.readBytes() })))
+
+    @Test fun csvAndJsonExports() {
+        val elf = parse("libversioned_arm64.so")
+        val syms = elf.dynamicSymbols.filter { it.name.isNotEmpty() }
+        val csv = SymbolReport.toCsv(syms).lines()
+        assertEquals("table,index,name,version,value,size,type,bind,visibility,section,exported,imported", csv[0])
+        assertTrue(csv.any { it.startsWith("dynsym,") && it.contains(",Java_com_example_Native_add,LIBSAMPLE_1.0,") && it.endsWith(",true,false") })
+        assertTrue(csv.any { it.contains(",puts,,") && it.endsWith(",false,true") })
+        val json = SymbolReport.toJson("x", syms, elf.symbolAvailabilityNotes())
+        assertTrue(json.contains("\"count\": ${syms.size}"))
+        assertEquals(json, SymbolReport.toJson("x", syms, elf.symbolAvailabilityNotes()))
+        assertTrue(SymbolReport.toText("x", syms, emptyList(), true).contains("Java_com_example_Native_add@@LIBSAMPLE_1.0"))
+    }
+}

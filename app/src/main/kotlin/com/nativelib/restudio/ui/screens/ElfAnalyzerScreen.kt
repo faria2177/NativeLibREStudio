@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -69,6 +70,7 @@ import com.nativelib.restudio.core.elf.ElfParser
 import com.nativelib.restudio.core.elf.ElfReport
 import com.nativelib.restudio.core.elf.ElfSymbol
 import com.nativelib.restudio.core.elf.RelroLevel
+import com.nativelib.restudio.core.elf.SymbolReport
 import com.nativelib.restudio.core.elf.WarningSeverity
 import com.nativelib.restudio.ui.components.KeyValue
 import com.nativelib.restudio.ui.components.Level
@@ -121,7 +123,7 @@ class ElfViewModel(app: Application, private val analysisId: Long, private val l
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ElfAnalyzerScreen(analysisId: Long, libIndex: Int, initialTab: Int, snackbar: SnackbarHostState, onBack: () -> Unit) {
+fun ElfAnalyzerScreen(analysisId: Long, libIndex: Int, initialTab: Int, snackbar: SnackbarHostState, onBack: () -> Unit, onOpenStrings: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as Application
     val vm: ElfViewModel = viewModel(key = "elf-$analysisId-$libIndex") { ElfViewModel(app, analysisId, libIndex) }
@@ -131,18 +133,30 @@ fun ElfAnalyzerScreen(analysisId: Long, libIndex: Int, initialTab: Int, snackbar
     val scope = rememberCoroutineScope()
     val parsed = (state as? LoadState.Loaded<ParsedElf>)?.value
 
-    fun export(uri: android.net.Uri?, json: Boolean) {
+    fun export(uri: android.net.Uri?, kind: String) {
         val p = parsed ?: return
         if (uri == null) return
         scope.launch {
             try {
-                val text = withContext(Dispatchers.Default) { if (json) ElfReport.toJson(p.elf, p.title, p.sha256) else ElfReport.toText(p.elf, p.title, p.sha256) }
-                Exporter.writeText(context, uri, text); snackbar.showSnackbar("ELF report exported")
+                val text = withContext(Dispatchers.Default) {
+                    val syms = p.elf.allSymbols.filter { it.name.isNotEmpty() && it.type != ElfConstants.STT_SECTION }
+                    when (kind) {
+                        "json" -> ElfReport.toJson(p.elf, p.title, p.sha256)
+                        "sym-csv" -> SymbolReport.toCsv(syms)
+                        "sym-json" -> SymbolReport.toJson(p.title, syms, p.elf.symbolAvailabilityNotes())
+                        "sym-txt" -> SymbolReport.toText(p.title, syms, p.elf.symbolAvailabilityNotes(), p.elf.header.is64)
+                        else -> ElfReport.toText(p.elf, p.title, p.sha256)
+                    }
+                }
+                Exporter.writeText(context, uri, text); snackbar.showSnackbar("Exported")
             } catch (e: Exception) { snackbar.showSnackbar("Export failed: ${e.message}") }
         }
     }
-    val saveTxt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { export(it, false) }
-    val saveJson = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { export(it, true) }
+    val saveTxt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { export(it, "txt") }
+    val saveJson = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { export(it, "json") }
+    val saveSymCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { export(it, "sym-csv") }
+    val saveSymJson = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { export(it, "sym-json") }
+    val saveSymTxt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { export(it, "sym-txt") }
 
     Scaffold(
         topBar = {
@@ -156,12 +170,16 @@ fun ElfAnalyzerScreen(analysisId: Long, libIndex: Int, initialTab: Int, snackbar
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
+                        if (parsed != null) IconButton(onClick = onOpenStrings) { Icon(Icons.Filled.TextFields, "Strings") }
                         if (parsed != null) Box {
                             IconButton(onClick = { menu = true }) { Icon(Icons.Filled.IosShare, "Export") }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 val base = parsed.file.name.substringBeforeLast('.')
                                 DropdownMenuItem(text = { Text("ELF report (TXT)") }, onClick = { menu = false; saveTxt.launch("${base}_elf.txt") })
                                 DropdownMenuItem(text = { Text("ELF report (JSON)") }, onClick = { menu = false; saveJson.launch("${base}_elf.json") })
+                                DropdownMenuItem(text = { Text("All symbols (CSV)") }, onClick = { menu = false; saveSymCsv.launch("${base}_symbols.csv") })
+                                DropdownMenuItem(text = { Text("All symbols (JSON)") }, onClick = { menu = false; saveSymJson.launch("${base}_symbols.json") })
+                                DropdownMenuItem(text = { Text("All symbols (TXT)") }, onClick = { menu = false; saveSymTxt.launch("${base}_symbols.txt") })
                             }
                         }
                     },

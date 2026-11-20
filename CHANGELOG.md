@@ -2,6 +2,10 @@
 
 ## Unreleased — 2026-11-20
 ### Added
+- Phase 4: `core:strings` module — streaming ASCII/UTF-8/UTF-16LE/BE extraction with chunk-boundary-safe state machines, UTF-16 endianness disambiguation and noise filters, section/virtual-address mapping, heuristic categories, TXT/CSV/JSON reports.
+- Strings Explorer screen: scan options (min length, encodings), progress + cancel, text/regex/case/offset search, encoding and category filters, detail dialog with hex view and copy, export of the shown strings.
+- Symbol export (CSV/JSON/TXT) from the ELF Analyzer; Strings shortcut in ELF Analyzer and library cards.
+- `hexDump` utility in `core:common`.
 - In-app self-update from GitHub Releases: automatic check (every 6 h, toggle in Settings) and manual "check now", APK download with progress/cancel, SHA-256 verification against `SHA256SUMS.txt`, system installer via FileProvider.
 - CI signs debug and release APKs with a permanent release key from repository secrets; releases are now full (latest) releases.
 ### Changed

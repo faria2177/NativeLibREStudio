@@ -40,7 +40,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Unit tests (ELF parser, archive extractor, app)
-        run: ./gradlew --stacktrace :core:common:test :core:elf:test :core:archive:test :app:testDebugUnitTest
+        run: ./gradlew --stacktrace :core:common:test :core:elf:test :core:archive:test :core:strings:test :app:testDebugUnitTest
 
       - name: Decode release keystore (optional)
         env:

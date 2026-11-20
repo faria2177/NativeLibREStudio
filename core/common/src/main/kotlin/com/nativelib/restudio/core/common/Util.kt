@@ -135,3 +135,28 @@ class JsonWriter(private val indent: String = "  ") {
         }
     }
 }
+
+/** Classic 16-bytes-per-line hex dump ("offset  hex  |ascii|"); [baseOffset] labels the first byte. */
+fun hexDump(bytes: ByteArray, baseOffset: Long, highlightFrom: Long = -1, highlightTo: Long = -1): String = buildString {
+    var i = 0
+    while (i < bytes.size) {
+        val lineOff = baseOffset + i
+        append(java.lang.Long.toHexString(lineOff).padStart(8, '0')).append("  ")
+        for (j in 0 until 16) {
+            if (i + j < bytes.size) {
+                val off = lineOff + j
+                val mark = off in highlightFrom until highlightTo
+                append(if (mark) '[' else ' ')
+                append("%02x".format(bytes[i + j].toInt() and 0xFF))
+            } else append("   ")
+            if (j == 7) append(' ')
+        }
+        append("  |")
+        for (j in 0 until minOf(16, bytes.size - i)) {
+            val c = bytes[i + j].toInt() and 0xFF
+            append(if (c in 0x20..0x7E) c.toChar() else '.')
+        }
+        appendLine("|")
+        i += 16
+    }
+}

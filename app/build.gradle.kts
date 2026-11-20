@@ -74,6 +74,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:elf"))
     implementation(project(":core:archive"))
+    implementation(project(":core:strings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

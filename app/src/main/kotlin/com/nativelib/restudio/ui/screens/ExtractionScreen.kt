@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -104,7 +105,7 @@ class ExtractionViewModel(app: Application, private val id: Long) : AndroidViewM
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExtractionScreen(id: Long, snackbar: SnackbarHostState, onBack: () -> Unit, onOpenElf: (Int) -> Unit) {
+fun ExtractionScreen(id: Long, snackbar: SnackbarHostState, onBack: () -> Unit, onOpenElf: (Int) -> Unit, onOpenStrings: (Int) -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as Application
     val vm: ExtractionViewModel = viewModel(key = "extraction-$id") { ExtractionViewModel(app, id) }
@@ -168,13 +169,13 @@ fun ExtractionScreen(id: Long, snackbar: SnackbarHostState, onBack: () -> Unit, 
                 CircularProgressIndicator(); Spacer(Modifier.height(12.dp)); Text(s.message)
             }
             is LoadState.Failed -> Text(s.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(pad).padding(24.dp))
-            is LoadState.Loaded -> ExtractionContent(s.value, pad, onOpenElf) { lib -> pendingLib = lib; saveOneLib.launch(lib.entry.fileName) }
+            is LoadState.Loaded -> ExtractionContent(s.value, pad, onOpenElf, onOpenStrings) { lib -> pendingLib = lib; saveOneLib.launch(lib.entry.fileName) }
         }
     }
 }
 
 @Composable
-private fun ExtractionContent(a: LoadedAnalysis, pad: PaddingValues, onOpenElf: (Int) -> Unit, onExportLib: (ExtractedLib) -> Unit) {
+private fun ExtractionContent(a: LoadedAnalysis, pad: PaddingValues, onOpenElf: (Int) -> Unit, onOpenStrings: (Int) -> Unit, onExportLib: (ExtractedLib) -> Unit) {
     val r = a.report
     var abiFilter by remember { mutableStateOf<String?>(null) }
     val other = "other"
@@ -215,13 +216,18 @@ private fun ExtractionContent(a: LoadedAnalysis, pad: PaddingValues, onOpenElf: 
                 }
             }
         }
-        if (r.libraries.isEmpty()) item { Text("No native libraries (.so) were found in this file.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        items(visible, key = { it.index }) { (idx, lib) -> LibCard(lib, onClick = { onOpenElf(idx) }, onExport = { onExportLib(lib) }) }
+        if (r.libraries.isEmpty()) item {
+            Column {
+                Text("No native libraries (.so) were found in this file.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!r.containerType.isArchive) TextButton(onClick = { onOpenStrings(-1) }) { Text("Extract strings from the whole file") }
+            }
+        }
+        items(visible, key = { it.index }) { (idx, lib) -> LibCard(lib, onClick = { onOpenElf(idx) }, onStrings = { onOpenStrings(idx) }, onExport = { onExportLib(lib) }) }
     }
 }
 
 @Composable
-private fun LibCard(lib: ExtractedLib, onClick: () -> Unit, onExport: () -> Unit) {
+private fun LibCard(lib: ExtractedLib, onClick: () -> Unit, onStrings: () -> Unit, onExport: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val ok = lib.crcVerified && lib.hashVerified
     Card(
@@ -242,6 +248,7 @@ private fun LibCard(lib: ExtractedLib, onClick: () -> Unit, onExport: () -> Unit
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Export .so file") }, onClick = { menu = false; onExport() })
                         if (lib.elf != null) DropdownMenuItem(text = { Text("Open in ELF Analyzer") }, onClick = { menu = false; onClick() })
+                        DropdownMenuItem(text = { Text("Strings") }, onClick = { menu = false; onStrings() })
                     }
                 }
             }

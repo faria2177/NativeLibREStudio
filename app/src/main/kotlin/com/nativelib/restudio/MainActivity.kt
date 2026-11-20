@@ -40,6 +40,7 @@ import com.nativelib.restudio.ui.screens.ExtractionScreen
 import com.nativelib.restudio.ui.screens.HistoryScreen
 import com.nativelib.restudio.ui.screens.LEGAL_NOTICE
 import com.nativelib.restudio.ui.screens.SettingsScreen
+import com.nativelib.restudio.ui.screens.StringsScreen
 import com.nativelib.restudio.ui.theme.NativeLibTheme
 
 object BuildConfigInfo {
@@ -78,7 +79,7 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_VIEW -> listOfNotNull(intent.data)
             else -> emptyList()
         }
-        if (uris.isNotEmpty()) vm.importUris(uris, openElfDirectly = true)
+        if (uris.isNotEmpty()) vm.importUris(uris, com.nativelib.restudio.ui.DirectTarget.ELF)
     }
 }
 
@@ -98,6 +99,7 @@ private fun AppRoot(vm: MainViewModel) {
             when (e) {
                 is NavEvent.OpenAnalysis -> nav.navigate("analysis/${e.id}")
                 is NavEvent.OpenElf -> nav.navigate("elf/${e.id}/${e.libIndex}?tab=${e.tab}")
+                is NavEvent.OpenStrings -> nav.navigate("strings/${e.id}/${e.libIndex}")
                 NavEvent.OpenHistory -> nav.navigate("history") { launchSingleTop = true }
             }
         }
@@ -113,7 +115,9 @@ private fun AppRoot(vm: MainViewModel) {
         }
         composable("analysis/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
             val id = entry.arguments?.getLong("id") ?: 0L
-            ExtractionScreen(id, snackbar, onBack = { nav.popBackStack() }, onOpenElf = { idx -> nav.navigate("elf/$id/$idx?tab=0") })
+            ExtractionScreen(id, snackbar, onBack = { nav.popBackStack() },
+                onOpenElf = { idx -> nav.navigate("elf/$id/$idx?tab=0") },
+                onOpenStrings = { idx -> nav.navigate("strings/$id/$idx") })
         }
         composable(
             "elf/{id}/{idx}?tab={tab}",
@@ -124,7 +128,16 @@ private fun AppRoot(vm: MainViewModel) {
             ),
         ) { entry ->
             val a = entry.arguments
-            ElfAnalyzerScreen(a?.getLong("id") ?: 0L, a?.getInt("idx") ?: 0, a?.getInt("tab") ?: 0, snackbar, onBack = { nav.popBackStack() })
+            val id = a?.getLong("id") ?: 0L; val idx = a?.getInt("idx") ?: 0
+            ElfAnalyzerScreen(id, idx, a?.getInt("tab") ?: 0, snackbar, onBack = { nav.popBackStack() },
+                onOpenStrings = { nav.navigate("strings/$id/$idx") })
+        }
+        composable(
+            "strings/{id}/{idx}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType }, navArgument("idx") { type = NavType.IntType }),
+        ) { entry ->
+            val a = entry.arguments
+            StringsScreen(a?.getLong("id") ?: 0L, a?.getInt("idx") ?: 0, snackbar, onBack = { nav.popBackStack() })
         }
         composable("history") {
             HistoryScreen(vm, snackbar, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("analysis/$it") })

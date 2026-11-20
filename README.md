@@ -4,7 +4,7 @@ On-device Android toolkit for extracting and statically analysing native librari
 Android packages. Everything runs locally; imported files are treated as untrusted and are **never
 loaded or executed**.
 
-> Status: Phases 1–3 (foundation, native extraction, ELF analysis). See [PROJECT_STATUS.md](PROJECT_STATUS.md).
+> Status: Phases 1–4 (foundation, native extraction, ELF analysis, symbols & strings). See [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## What works today
 
@@ -15,11 +15,12 @@ loaded or executed**.
 | Extraction | `lib/<abi>/` detection for arm64-v8a, armeabi-v7a, armeabi, x86, x86_64, riscv64 (+ deprecated mips/mips64), original paths preserved, CRC-32 **and** independent SHA-256 re-read verification. |
 | Problems detected | Corrupted entries (CRC/size), non-ELF `.so`, ABI/machine mismatch, libraries missing in some ABIs, duplicates across splits, byte-identical files under different ABIs, non-standard locations, unknown/deprecated ABIs, zip-slip paths, decompression bombs, missing 16 KiB page alignment. |
 | ELF analyzer | ELF32/64, LE/BE, header, program headers, sections, dynamic section (NEEDED/SONAME/RPATH/RUNPATH/flags), `.dynsym` + `.symtab`, GNU symbol versions (verdef/verneed/versym), REL/RELA/RELR relocations with per-arch type names, notes and GNU Build ID, hardening facts (RWX, NX stack, RELRO, BIND_NOW, TEXTREL, 16 KiB alignment). Recovers `.dynsym` from `DT_HASH`/`DT_GNU_HASH` when section headers are stripped. Explains which information is unavailable for stripped binaries. |
-| Symbol explorer | Search by name/address, filters (exported, imported, functions, objects, weak, global, local, undefined, per table), sort by name/address/size. |
+| Symbol explorer | Search by name/address, filters (exported, imported, functions, objects, weak, global, local, undefined, per table), sort by name/address/size, export CSV/JSON/TXT. |
+| Strings explorer | Streaming ASCII / UTF-8 / UTF-16LE / UTF-16BE extraction (ASCII output identical to GNU `strings -a`), configurable minimum length, file offset + virtual address + section, regex / case-sensitive / offset search, heuristic tags (URL, IP, email, path, class, function, format string, error, debug, config), hex view, export TXT/CSV/JSON. Works on `.so`, DEX and raw binaries. URLs are never opened. |
 | Export | Extraction report TXT/JSON/CSV, ELF report TXT/JSON, single `.so` or all libraries to a folder (structure preserved). Reports are deterministic. |
 | History | Room database; re-opening an entry re-verifies the stored copy. |
 
-Planned (shown as disabled tiles in the app, not faked): strings (Phase 4), disassembly via Capstone
+Planned (shown as disabled tiles in the app, not faked): disassembly via Capstone
 (Phase 5), decompilation (Phase 6), dependency trees / hex editor / comparison (Phase 7), security
 indicators (Phase 8).
 
@@ -30,6 +31,7 @@ app/            Android app (Kotlin, Jetpack Compose, Material 3, Room, SAF)
 core/common     ByteSource (bounds-checked, memory-mapped), hashing, deterministic JSON writer
 core/elf        ELF parser + reports (pure Kotlin/JVM, unit tested)
 core/archive    Format detection, native-library extraction, verification, reports (pure Kotlin/JVM)
+core/strings    Streaming string extraction, classification, reports (pure Kotlin/JVM)
 tools/          Script + sources that regenerate the ELF test samples
 ```
 

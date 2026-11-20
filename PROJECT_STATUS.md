@@ -9,7 +9,7 @@ _Last updated: 2026-11-20_
 | 1 Foundation | ✅ Done | Modules, Compose M3 UI (dark/light), SAF import (files, folder, share, open-with), APK/ZIP parsing |
 | 2 Native extraction | ✅ Done | ABI detection, `.so` identification, extraction, CRC-32 + SHA-256 verification, history |
 | 3 ELF analysis | ✅ Done | Header, segments, sections, dynamic, symbols, versions, relocations, notes, hardening facts |
-| 4 Symbols & strings | 🟡 Partial | Symbol search/filter/sort/export done (via ELF report). Strings engine pending |
+| 4 Symbols & strings | ✅ Done | Symbol search/filter/sort + CSV/JSON/TXT export; strings engine (ASCII output verified identical to GNU strings on 3 binaries incl. 123 MB libLLVM) and Strings Explorer |
 | 5 Disassembly | ⏳ Pending | Capstone via NDK/JNI — licence (BSD-3) and Android build to be verified first |
 | 6 Decompilation | ⏳ Pending | Feasibility assessment of Ghidra/Rizin/RetDec on-device |
 | 7 Advanced tools | ⏳ Pending | Dependency tree view, hex editor, comparison, xrefs |
@@ -19,8 +19,9 @@ _Last updated: 2026-11-20_
 
 ## Test results
 
-Local JVM run and GitHub Actions: **38 tests, 0 failures** (incl. 4 update-logic tests)
-- `core:elf` — 16 tests (4 ABIs, stripped, versioned, no-section-headers, truncation, corrupted headers, 500 random mutations, determinism, big-endian)
+Local JVM run: **53 tests, 0 failures**
+- `core:strings` — 14 tests (reference comparison on all samples, offsets/sections/vaddr, chunk boundaries, UTF-16 LE/BE alignment, UTF-8/Bengali, invalid UTF-8, limits, cancellation, classification, reports, hex dump)
+- `core:elf` — 17 tests (symbol export, 4 ABIs, stripped, versioned, no-section-headers, truncation, corrupted headers, 500 random mutations, determinism, big-endian)
 - `core:archive` — 16 tests (APK/XAPK/APKS/AAB, missing/duplicate/mismatch/corrupted, zip-slip, invalid/truncated ZIP, cancellation, reproducible reports)
 - `app` — 6 tests (file-name handling, update tag/asset/SHA256SUMS logic)
 - Extra local fuzzing: 120,000 mutated ELFs parsed with no unexpected exception.
@@ -36,7 +37,13 @@ Every push to `main` publishes a new `build-N` pre-release.
 - CI signs with the permanent release key once the four `RELEASE_*` secrets are set (until then: throw-away debug key).
 - In-app updater checks `faria2177/NativeLibREStudio` latest release; first install signed with the new key requires uninstalling builds signed with the old debug key once.
 
+## Performance (desktop JVM reference)
+
+libLLVM-17.so (123 MB): ELF parse 0.35 s; full string scan (3 encodings) + classification ≈ 2 s, 40 MB retained for 200k strings. Phones will be slower; scans show progress and can be cancelled.
+
 ## Known limitations / bugs
+
+- UTF-16 detection skips CJK/Hangul blocks and requires ≥75% letters/digits to limit noise from machine code; some ASCII-symbol noise remains (same as `strings -el`).
 
 - Android packed relocations (APS2, `SHT_ANDROID_REL/RELA`) are detected but not decoded.
 - Android 14+ `ZipFile` refuses archives containing `..` entry names; such files fail with an "invalid archive" message rather than a per-entry zip-slip report.
@@ -46,5 +53,4 @@ Every push to `main` publishes a new `build-N` pre-release.
 ## Next tasks
 
 1. Install build-1 on a real device and test with real APKs (acceptance criterion 13).
-2. Phase 4: strings engine (ASCII/UTF-8/UTF-16LE/BE, min length, regex, offsets, TXT/CSV/JSON export, URL/path classification).
-3. Phase 5: Capstone evaluation and NDK/CMake integration.
+2. Phase 5: Capstone evaluation (licence, Android NDK build, maintenance) and NDK/CMake/JNI integration.
