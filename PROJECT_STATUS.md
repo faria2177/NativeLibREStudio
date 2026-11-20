@@ -19,7 +19,7 @@ _Last updated: 2026-11-20_
 
 ## Test results
 
-Local JVM run (Kotlin 2.0.21, JUnit 4.13.2): **34 tests, 0 failures**
+Local JVM run and GitHub Actions: **34 tests, 0 failures**
 - `core:elf` — 16 tests (4 ABIs, stripped, versioned, no-section-headers, truncation, corrupted headers, 500 random mutations, determinism, big-endian)
 - `core:archive` — 16 tests (APK/XAPK/APKS/AAB, missing/duplicate/mismatch/corrupted, zip-slip, invalid/truncated ZIP, cancellation, reproducible reports)
 - `app` — 2 tests (file-name handling)
@@ -27,7 +27,9 @@ Local JVM run (Kotlin 2.0.21, JUnit 4.13.2): **34 tests, 0 failures**
 
 ## Build status
 
-See the **Build & Test** workflow in GitHub Actions. Successful pushes to `main` publish a `build-N` pre-release with debug and release APKs.
+✅ CI run #1 (commit f45071c) passed: all unit tests, debug + release APK assembly, lint (report-only).
+Release [build-1](https://github.com/faria2177/NativeLibREStudio/releases/tag/build-1): debug APK 17.2 MB, release APK (R8-minified, debug-signed) 1.4 MB.
+Every push to `main` publishes a new `build-N` pre-release.
 
 ## Known limitations / bugs
 
@@ -38,6 +40,6 @@ See the **Build & Test** workflow in GitHub Actions. Successful pushes to `main`
 
 ## Next tasks
 
-1. Confirm CI green; install the debug APK on a real device and test with real APKs.
+1. Install build-1 on a real device and test with real APKs (acceptance criterion 13).
 2. Phase 4: strings engine (ASCII/UTF-8/UTF-16LE/BE, min length, regex, offsets, TXT/CSV/JSON export, URL/path classification).
 3. Phase 5: Capstone evaluation and NDK/CMake integration.
