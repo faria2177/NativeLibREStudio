@@ -1,0 +1,109 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+
+      # The repository is pushed as text only; generate the wrapper JAR once and commit it back.
+      - name: Bootstrap Gradle wrapper JAR
+        if: hashFiles('gradle/wrapper/gradle-wrapper.jar') == ''
+        run: gradle wrapper --gradle-version 8.11.1 --distribution-type bin
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Unit tests (ELF parser, archive extractor, app)
+        run: ./gradlew --stacktrace :core:common:test :core:elf:test :core:archive:test :app:testDebugUnitTest
+
+      - name: Decode release keystore (optional)
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Assemble debug and release APKs
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease
+
+      - name: Lint (report only)
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug
+
+      - name: Collect APKs
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/*.apk dist/NativeLibREStudio-${{ github.run_number }}-debug.apk
+          cp app/build/outputs/apk/release/*.apk dist/NativeLibREStudio-${{ github.run_number }}-release.apk
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apks-${{ github.run_number }}
+          path: dist/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports-${{ github.run_number }}
+          path: |
+            core/*/build/reports/tests/
+            app/build/reports/
+          if-no-files-found: ignore
+
+      - name: Commit generated wrapper JAR
+        if: github.event_name == 'push' && hashFiles('gradle/wrapper/gradle-wrapper.jar') != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradle/wrapper/gradle-wrapper.jar
+          git update-index --chmod=+x gradlew
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: add generated Gradle wrapper JAR [skip ci]"
+            git push
+          fi
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          prerelease: true
+          body: |
+            Automated build from ${{ github.sha }}.
+            All unit tests passed before this release was created. See PROJECT_STATUS.md for scope.
+          files: |
+            dist/*.apk
+            dist/SHA256SUMS.txt
