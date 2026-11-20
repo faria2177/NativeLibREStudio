@@ -37,6 +37,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = container.repository
     val workspace = container.workspace
     val settings = container.settings
+    val updates = container.updates
+    private var updateJob: Job? = null
+
+    /** Automatic update check on launch (rate-limited inside UpdateManager). */
+    fun autoCheckUpdates() { viewModelScope.launch { updates.autoCheckIfDue() } }
+    fun checkUpdates() { viewModelScope.launch { updates.check(manual = true) } }
+    fun downloadUpdate(info: com.nativelib.restudio.update.UpdateInfo) {
+        if (updateJob?.isActive == true) return
+        updateJob = viewModelScope.launch { updates.download(info) }
+    }
+    fun cancelUpdate() { updateJob?.cancel() }
 
     private val _job = MutableStateFlow<JobState>(JobState.Idle)
     val job: StateFlow<JobState> = _job

@@ -19,10 +19,10 @@ _Last updated: 2026-11-20_
 
 ## Test results
 
-Local JVM run and GitHub Actions: **34 tests, 0 failures**
+Local JVM run and GitHub Actions: **38 tests, 0 failures** (incl. 4 update-logic tests)
 - `core:elf` — 16 tests (4 ABIs, stripped, versioned, no-section-headers, truncation, corrupted headers, 500 random mutations, determinism, big-endian)
 - `core:archive` — 16 tests (APK/XAPK/APKS/AAB, missing/duplicate/mismatch/corrupted, zip-slip, invalid/truncated ZIP, cancellation, reproducible reports)
-- `app` — 2 tests (file-name handling)
+- `app` — 6 tests (file-name handling, update tag/asset/SHA256SUMS logic)
 - Extra local fuzzing: 120,000 mutated ELFs parsed with no unexpected exception.
 
 ## Build status
@@ -30,6 +30,11 @@ Local JVM run and GitHub Actions: **34 tests, 0 failures**
 ✅ CI run #1 (commit f45071c) passed: all unit tests, debug + release APK assembly, lint (report-only).
 Release [build-1](https://github.com/faria2177/NativeLibREStudio/releases/tag/build-1): debug APK 17.2 MB, release APK (R8-minified, debug-signed) 1.4 MB.
 Every push to `main` publishes a new `build-N` pre-release.
+
+## Release & updates
+
+- CI signs with the permanent release key once the four `RELEASE_*` secrets are set (until then: throw-away debug key).
+- In-app updater checks `faria2177/NativeLibREStudio` latest release; first install signed with the new key requires uninstalling builds signed with the old debug key once.
 
 ## Known limitations / bugs
 

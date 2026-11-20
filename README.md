@@ -43,7 +43,16 @@ The repository is text-only; the first CI run commits `gradle/wrapper/gradle-wra
 If you build before that, run `gradle wrapper --gradle-version 8.11.1` once.
 
 Release signing: add repository secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`,
-`RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`. Without them the release APK is signed with the debug key.
+`RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`. CI then signs **both** debug and release APKs with that
+permanent key. Without them CI falls back to a throw-away debug key (installs, but cannot be updated in place).
+
+## In-app updates
+
+Every push to `main` publishes a GitHub Release `build-N` (`versionCode = N`). On launch (at most every
+6 h, can be disabled in Settings) the app asks the GitHub Releases API for the latest release, and if
+`N` is higher than the installed build it offers the matching APK (debug installs → `-debug.apk`,
+release installs → `-release.apk`). The download is verified against `SHA256SUMS.txt` before the system
+installer is opened. This is the only network access the app makes; imported files never leave the device.
 
 ## Tests
 

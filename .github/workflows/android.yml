@@ -100,10 +100,14 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }}
-          prerelease: true
+          prerelease: false
+          make_latest: true
           body: |
-            Automated build from ${{ github.sha }}.
-            All unit tests passed before this release was created. See PROJECT_STATUS.md for scope.
+            Automated build ${{ github.run_number }} from ${{ github.sha }}.
+            ${{ github.event.head_commit.message }}
+
+            All unit tests passed before this release was created.
+            Signed with the release key: ${{ env.HAS_KEYSTORE }}. The app's built-in updater installs this release automatically.
           files: |
             dist/*.apk
             dist/SHA256SUMS.txt

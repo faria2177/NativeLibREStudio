@@ -26,6 +26,7 @@ android {
         if (!ksPath.isNullOrBlank() && file(ksPath).exists()) {
             create("release") {
                 storeFile = file(ksPath)
+                storeType = "PKCS12"
                 storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("RELEASE_KEY_ALIAS")
                 keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
@@ -42,6 +43,8 @@ android {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
         debug {
+            // CI signs debug builds with the same permanent key so in-app updates install over them.
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }

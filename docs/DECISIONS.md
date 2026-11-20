@@ -15,4 +15,7 @@
    warning instead of silently omitting them.
 6. **Text-only repository.** Test ELFs are base64 files; the Gradle wrapper JAR is generated and
    committed by CI on the first run.
+8. **Self-update via GitHub Releases.** Tag `build-N` ↔ `versionCode N`. The updater is the only code
+   that touches the network; analysis stays offline. Debug builds are signed with the release key too so
+   either variant can update in place.
 7. **Release signing** uses CI secrets when present, otherwise the debug key so artifacts are installable.

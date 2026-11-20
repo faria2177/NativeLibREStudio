@@ -5,6 +5,7 @@ import android.content.Context
 import com.nativelib.restudio.data.AnalysisRepository
 import com.nativelib.restudio.data.AppDatabase
 import com.nativelib.restudio.data.Workspace
+import com.nativelib.restudio.update.UpdateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -27,11 +28,13 @@ class NativeLibApp : Application() {
     lateinit var workspace: Workspace private set
     lateinit var repository: AnalysisRepository private set
     lateinit var settings: SettingsStore private set
+    lateinit var updates: UpdateManager private set
 
     override fun onCreate() {
         super.onCreate()
         workspace = Workspace(this)
         repository = AnalysisRepository(AppDatabase.create(this).analysisDao(), workspace)
         settings = SettingsStore(this)
+        updates = UpdateManager(this)
     }
 }

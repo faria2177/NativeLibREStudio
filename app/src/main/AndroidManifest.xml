@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No INTERNET permission: all analysis is on-device. Files are accessed only through
-         the Storage Access Framework, so no storage permissions are required. -->
+    <!-- INTERNET is used only by the self-updater (GitHub Releases API + APK download).
+         All analysis is on-device; imported files are never uploaded. Files are accessed only
+         through the Storage Access Framework, so no storage permissions are required. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".NativeLibApp"
@@ -48,5 +51,15 @@
                 <data android:mimeType="application/x-elf" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
     </application>
 </manifest>

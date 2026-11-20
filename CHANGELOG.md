@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 2026-11-20
+### Added
+- In-app self-update from GitHub Releases: automatic check (every 6 h, toggle in Settings) and manual "check now", APK download with progress/cancel, SHA-256 verification against `SHA256SUMS.txt`, system installer via FileProvider.
+- CI signs debug and release APKs with a permanent release key from repository secrets; releases are now full (latest) releases.
+### Changed
+- App now declares `INTERNET` (updater only) and `REQUEST_INSTALL_PACKAGES`.
+
 ## 0.3.x — 2026-11-20 (Phases 1–3)
 
 ### Added

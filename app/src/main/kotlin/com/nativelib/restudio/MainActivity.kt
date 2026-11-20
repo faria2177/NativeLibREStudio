@@ -33,6 +33,7 @@ import com.nativelib.restudio.ui.JobState
 import com.nativelib.restudio.ui.MainViewModel
 import com.nativelib.restudio.ui.NavEvent
 import com.nativelib.restudio.ui.components.ProgressDialog
+import com.nativelib.restudio.ui.components.UpdateDialog
 import com.nativelib.restudio.ui.screens.DashboardScreen
 import com.nativelib.restudio.ui.screens.ElfAnalyzerScreen
 import com.nativelib.restudio.ui.screens.ExtractionScreen
@@ -87,6 +88,10 @@ private fun AppRoot(vm: MainViewModel) {
     val snackbar = remember { SnackbarHostState() }
     val job by vm.job.collectAsStateWithLifecycle()
     val accepted by vm.settings.acceptedNotice.collectAsStateWithLifecycle()
+    val update by vm.updates.state.collectAsStateWithLifecycle()
+
+    // Check GitHub Releases for a newer build once the notice is accepted (rate-limited to every 6 h).
+    LaunchedEffect(accepted) { if (accepted) vm.autoCheckUpdates() }
 
     LaunchedEffect(Unit) {
         vm.nav.collect { e ->
@@ -128,6 +133,7 @@ private fun AppRoot(vm: MainViewModel) {
     }
 
     (job as? JobState.Running)?.let { ProgressDialog(it, onCancel = vm::cancel) }
+    if (accepted) UpdateDialog(update, vm)
 
     if (!accepted) AlertDialog(
         onDismissRequest = {},

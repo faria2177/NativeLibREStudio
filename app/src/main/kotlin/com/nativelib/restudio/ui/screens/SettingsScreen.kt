@@ -17,6 +17,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,8 @@ import com.nativelib.restudio.core.common.humanBytes
 import com.nativelib.restudio.ui.MainViewModel
 import com.nativelib.restudio.ui.components.KeyValue
 import com.nativelib.restudio.ui.components.SectionCard
+import com.nativelib.restudio.update.UpdateLogic
+import com.nativelib.restudio.update.UpdateState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -56,6 +60,8 @@ fun SettingsScreen(vm: MainViewModel, snackbar: SnackbarHostState, onBack: () ->
     val context = LocalContext.current
     val theme by vm.settings.theme.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
+    val autoUpdate by vm.updates.autoCheck.collectAsStateWithLifecycle()
+    val updateState by vm.updates.state.collectAsStateWithLifecycle()
     var used by remember { mutableLongStateOf(-1L) }
     var confirmClear by remember { mutableStateOf(false) }
     LaunchedEffect(history.size) { used = withContext(Dispatchers.IO) { vm.workspace.usedBytes() } }
@@ -81,6 +87,19 @@ fun SettingsScreen(vm: MainViewModel, snackbar: SnackbarHostState, onBack: () ->
                 Text("Imported files are copied into private app storage and analysed there; originals are never modified.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { confirmClear = true }, modifier = Modifier.padding(top = 8.dp)) { Text("Clear all analyses") }
+            }
+            SectionCard("Updates") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("GitHub Release থেকে স্বয়ংক্রিয় আপডেট চেক", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Switch(checked = autoUpdate, onCheckedChange = { vm.updates.setAutoCheck(it) })
+                }
+                KeyValue("Installed", BuildConfigInfo.versionName(context))
+                KeyValue("Source", "github.com/${UpdateLogic.REPO}/releases")
+                Text("শুধু আপডেট চেক ও ডাউনলোডের জন্য ইন্টারনেট ব্যবহার হয়; আপনার ফাইল কোথাও আপলোড হয় না। ডাউনলোড করা APK SHA-256 দিয়ে যাচাই করা হয়।",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = { vm.checkUpdates() }, enabled = updateState !is UpdateState.Checking, modifier = Modifier.padding(top = 8.dp)) {
+                    Text(if (updateState is UpdateState.Checking) "চেক করা হচ্ছে…" else "এখনই আপডেট চেক করুন")
+                }
             }
             SectionCard("About") {
                 KeyValue("Version", BuildConfigInfo.versionName(context))
